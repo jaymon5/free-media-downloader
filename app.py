@@ -1,44 +1,34 @@
 import streamlit as st
-from pytube import YouTube
-from io import BytesIO
+import yt_dlp
 
-st.title("Free Media Downloader")
+st.set_page_config(page_title="Free Media Downloader", page_icon="📥")
+st.title("📥 Free Media Downloader")
 
-url = st.text_input("Paste YouTube Link Here:")
+url = st.text_input("Enter YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
 
 if url:
     try:
-        yt = YouTube(url)
-        st.image(yt.thumbnail_url, width=300)
-        st.write(f"**Title:** {yt.title}")
+        # Configuration for yt-dlp
+        ydl_opts = {
+            'format': 'best',
+            'quiet': True,
+            'no_warnings': True,
+        }
 
-        # Choose format
-        option = st.selectbox("Select Format:", ["MP4 (Video)", "MP3 (Audio)"])
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # Extract video info
+            info = ydl.extract_info(url, download=False)
+            video_title = info.get('title', 'video')
+            video_url = info.get('url') # This is the direct link to the file
+            thumbnail = info.get('thumbnail')
 
-        if st.button("Prepare Download"):
-            with st.spinner("Processing..."):
-                buffer = BytesIO()
-                if option == "MP4 (Video)":
-                    # Get the highest resolution progressive mp4
-                    stream = yt.streams.filter(progressive=True, file_extension='mp4').first()
-                    stream.stream_to_buffer(buffer)
-                    file_name = f"{yt.title}.mp4"
-                    mime = "video/mp4"
-                else:
-                    # Get audio only
-                    stream = yt.streams.filter(only_audio=True).first()
-                    stream.stream_to_buffer(buffer)
-                    file_name = f"{yt.title}.mp3"
-                    mime = "audio/mpeg"
-                
-                buffer.seek(0)
-                st.download_button(
-                    label=f"Download {option}",
-                    data=buffer,
-                    file_name=file_name,
-                    mime=mime
-                )
-                st.success("Ready! Click the button above to save.")
+            st.image(thumbnail, width=300)
+            st.write(f"**Found:** {video_title}")
+
+            # Direct link button
+            st.link_button("🚀 Download Video Now", video_url)
+            st.info("Right-click the button and 'Save Link As' if it just opens in a new tab.")
 
     except Exception as e:
-        st.error(f"YouTube is blocking this request. Error: {e}")
+        st.error(f"YouTube is being difficult! Error: {e}")
+        st.warning("Tip: Make sure the URL is a standard video link, not a Short or a Playlist.")
